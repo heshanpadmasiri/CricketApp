@@ -153,6 +153,7 @@ service / on new http:Listener(9009) {
 service /score on new websocket:Listener(9090) {
     resource function get .() returns websocket:Service {
         return new LiveScoreService();
+        // return new FastLiveScoreService();
     }
 }
 
@@ -185,5 +186,29 @@ service class LiveScoreService {
             Score score = check self.dataClient->/score(id = gameId);
             check caller->writeMessage(score);
         }
+    }
+}
+
+// Demo3 fast worker
+// FIXME: use this instead of LiveScoreService
+
+service class FastLiveScoreService {
+    *LiveScoreService;
+    final http:Client dataClient = checkpanic new ("localhost:8081/info");
+    final http:Client altDataClient = checkpanic new ("localhost:8082/score");
+    remote function onMessage(websocket:Caller caller, ScoreRequest req) returns error? {
+        if (req !is NextScoreRequest) {
+            return;
+        }
+        int gameId = req.gameId;
+        worker scoreFetcher1 returns Score|error {
+            return self.dataClient->/score(id = gameId);
+        }
+
+        worker scoreFetcher2 returns Score|error {
+            return self.altDataClient->/score(id = gameId);
+        }
+        Score score = check wait scoreFetcher1 | scoreFetcher2;
+        check caller->writeMessage(score);
     }
 }

@@ -1,4 +1,5 @@
 import ballerina/http;
+import ballerina/lang.runtime;
 
 service /image on new http:Listener(8080) {
     resource function get .(int id) returns string {
@@ -16,11 +17,18 @@ service /info on new http:Listener(8081) {
     }
 
     resource function get series(int id) returns Series {
+        runtime:sleep(1000);
         return createSeries(id);
     }
 
     resource function get score(int id) returns Score {
         return { score: 10, wickets: 0};
+    }
+}
+
+service /score on new http:Listener(8082) {
+    resource function get .(int id) returns Score {
+        return { score: 100, wickets: 0};
     }
 }
 
